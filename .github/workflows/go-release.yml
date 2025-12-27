@@ -1,0 +1,140 @@
+name: Go Release (Semantic Versioning)
+
+on:
+  workflow_call:
+    inputs:
+      go-version:
+        description: 'Go version to use for builds'
+        required: false
+        type: string
+        default: '1.24'
+      binary-name:
+        description: 'Name of the binary to build'
+        required: true
+        type: string
+      platforms:
+        description: 'Comma-separated list of platforms (e.g., linux/amd64,windows/amd64)'
+        required: false
+        type: string
+        default: 'linux/amd64,linux/arm64,darwin/amd64,darwin/arm64,windows/amd64,windows/arm64'
+      ldflags-template:
+        description: 'Template for ldflags (use {{version}} placeholder)'
+        required: false
+        type: string
+        default: '-X main.version={{version}}'
+      enable-windows-resource:
+        description: 'Enable Windows .exe resource embedding with goversioninfo'
+        required: false
+        type: boolean
+        default: false
+      windows-company-name:
+        description: 'Company name for Windows .exe metadata'
+        required: false
+        type: string
+        default: ''
+      windows-product-name:
+        description: 'Product name for Windows .exe metadata'
+        required: false
+        type: string
+        default: ''
+      windows-file-description:
+        description: 'File description for Windows .exe metadata'
+        required: false
+        type: string
+        default: ''
+      windows-copyright:
+        description: 'Copyright for Windows .exe metadata'
+        required: false
+        type: string
+        default: ''
+      node-version:
+        description: 'Node.js version for semantic-release'
+        required: false
+        type: string
+        default: '20.x'
+      git-user-name:
+        description: 'Git committer name for changelog commits'
+        required: false
+        type: string
+        default: 'Release Bot'
+      git-user-email:
+        description: 'Git committer email for changelog commits'
+        required: false
+        type: string
+        default: 'release-bot@github.com'
+
+jobs:
+  # Stage 1: Detect version using semantic-release dry-run
+  version:
+    name: Detect Version
+    uses: ./.github/workflows/stages/version-detect.yml
+    with:
+      node-version: ${{ inputs.node-version }}
+      upload-artifacts: true
+
+  # Stage 2: Build binaries if release would be created
+  build:
+    name: Build Binaries
+    needs: version
+    if: needs.version.outputs.would-release == 'true'
+    uses: ./.github/workflows/stages/go-build-matrix.yml
+    with:
+      go-version: ${{ inputs.go-version }}
+      version: ${{ needs.version.outputs.version }}
+      binary-name: ${{ inputs.binary-name }}
+      platforms: ${{ inputs.platforms }}
+      ldflags-template: ${{ inputs.ldflags-template }}
+      enable-windows-resource: ${{ inputs.enable-windows-resource }}
+      windows-company-name: ${{ inputs.windows-company-name }}
+      windows-product-name: ${{ inputs.windows-product-name }}
+      windows-file-description: ${{ inputs.windows-file-description }}
+      windows-copyright: ${{ inputs.windows-copyright }}
+
+  # Stage 3: Create release using semantic-release
+  release:
+    name: Create Release
+    needs: [version, build]
+    if: needs.version.outputs.would-release == 'true'
+    uses: ./.github/workflows/stages/release-semantic.yml
+    permissions:
+      contents: write
+    with:
+      node-version: ${{ inputs.node-version }}
+      git-user-name: ${{ inputs.git-user-name }}
+      git-user-email: ${{ inputs.git-user-email }}
+      download-artifacts: true
+      artifact-pattern: 'build-*'
+
+  # Summary job
+  summary:
+    name: Workflow Summary
+    needs: [version, build, release]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Display workflow summary
+        run: |
+          echo "==========================================="
+          echo "  GO RELEASE WORKFLOW SUMMARY"
+          echo "==========================================="
+          echo "Would release: ${{ needs.version.outputs.would-release }}"
+
+          if [ "${{ needs.version.outputs.would-release }}" = "true" ]; then
+            echo "Version: ${{ needs.version.outputs.version }}"
+            echo "Release type: ${{ needs.version.outputs.release-type }}"
+            echo "Git tag: ${{ needs.version.outputs.git-tag }}"
+            echo "Build status: ${{ needs.build.result }}"
+            echo "Release status: ${{ needs.release.result }}"
+
+            if [ "${{ needs.release.result }}" = "success" ]; then
+              echo "Release URL: ${{ needs.release.outputs.release-url }}"
+            fi
+          else
+            echo "ℹ️  No release created (no releasable commits)"
+            echo ""
+            echo "To trigger a release, use conventional commits:"
+            echo "  feat: new feature → minor version bump"
+            echo "  fix: bug fix → patch version bump"
+            echo "  feat!: breaking change → major version bump"
+          fi
+          echo "==========================================="
