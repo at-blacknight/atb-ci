@@ -67,7 +67,7 @@ jobs:
   # Stage 1: Detect version using semantic-release dry-run
   version:
     name: Detect Version
-    uses: ./.github/workflows/stages/version-detect.yml
+    uses: ./.github/workflows/stage-version-detect.yml
     with:
       node-version: ${{ inputs.node-version }}
       upload-artifacts: true
@@ -77,7 +77,7 @@ jobs:
     name: Build Binaries
     needs: version
     if: needs.version.outputs.would-release == 'true'
-    uses: ./.github/workflows/stages/go-build-matrix.yml
+    uses: ./.github/workflows/stage-go-build-matrix.yml
     with:
       go-version: ${{ inputs.go-version }}
       version: ${{ needs.version.outputs.version }}
@@ -95,7 +95,7 @@ jobs:
     name: Create Release
     needs: [version, build]
     if: needs.version.outputs.would-release == 'true'
-    uses: ./.github/workflows/stages/release-semantic.yml
+    uses: ./.github/workflows/stage-release-semantic.yml
     permissions:
       contents: write
     with:
