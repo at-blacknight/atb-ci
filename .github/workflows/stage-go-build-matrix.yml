@@ -53,19 +53,6 @@ on:
         default: ''
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        include: ${{ fromJson(inputs.platforms-matrix) }}
-
-    steps:
-      - name: Parse platform matrix
-        id: parse-matrix
-        run: |
-          # This step is a workaround - the actual matrix is generated in prepare job
-          echo "This job uses the matrix from prepare job"
-
   prepare:
     runs-on: ubuntu-latest
     outputs:
