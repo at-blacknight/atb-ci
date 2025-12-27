@@ -1,3 +1,15 @@
+## [0.1.1](https://github.com/at-blacknight/atb-ci/compare/v0.1.0...v0.1.1) (2025-12-27)
+
+
+### Bug Fixes
+
+* attempt to get clean app name in zip ([c002afe](https://github.com/at-blacknight/atb-ci/commit/c002afe8515f25729731168c7913324a07c0ca86))
+* correct escape again ([2b99240](https://github.com/at-blacknight/atb-ci/commit/2b99240e700c964726ebac8c9fe02ff018b83630))
+* fix escape ([5c34185](https://github.com/at-blacknight/atb-ci/commit/5c34185123a4dde1684ab5e1502616b9c4bc37ac))
+* for release ([554accd](https://github.com/at-blacknight/atb-ci/commit/554accd243a948827d750fbfaba4bf59dd6031d9))
+* try again for actual release ([5956772](https://github.com/at-blacknight/atb-ci/commit/59567729f23878ab9f480def05ae69b265b9d73e))
+* try and version the templates ([b7b6be0](https://github.com/at-blacknight/atb-ci/commit/b7b6be016ddb81a5a46feacb102a5eea5d9c29c7))
+
 ## [0.1.0](https://github.com/at-blacknight/atb-ci/compare/v0.0.1...v0.1.0) (2025-12-27)
 
 
