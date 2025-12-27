@@ -1,0 +1,191 @@
+name: No-Build Release (Semantic Versioning)
+
+on:
+  workflow_call:
+    inputs:
+      node-version:
+        description: 'Node.js version for semantic-release'
+        required: false
+        type: string
+        default: '20.x'
+      git-user-name:
+        description: 'Git committer name for changelog commits'
+        required: false
+        type: string
+        default: 'Release Bot'
+      git-user-email:
+        description: 'Git committer email for changelog commits'
+        required: false
+        type: string
+        default: 'release-bot@github.com'
+      enable-text-replacement:
+        description: 'Enable version text replacement in files'
+        required: false
+        type: boolean
+        default: false
+      replacement-files:
+        description: 'JSON array of file paths to modify (e.g., ["package.json", "src/version.ts"])'
+        required: false
+        type: string
+        default: '[]'
+      replacement-specs:
+        description: 'JSON array of replacement specs with pattern and replacement (use {{version}} placeholder)'
+        required: false
+        type: string
+        default: '[]'
+
+jobs:
+  # Stage 1: Detect version using semantic-release dry-run
+  version:
+    name: Detect Version
+    uses: ./.github/workflows/stage-version-detect.yml
+    with:
+      node-version: ${{ inputs.node-version }}
+      upload-artifacts: true
+
+  # Stage 2: Text replacement (optional, conditional on enable-text-replacement)
+  text-replace:
+    name: Replace Version in Files
+    needs: version
+    if: needs.version.outputs.would-release == 'true' && inputs.enable-text-replacement == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Perform text replacements
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+          REPLACEMENT_FILES: ${{ inputs.replacement-files }}
+          REPLACEMENT_SPECS: ${{ inputs.replacement-specs }}
+        run: |
+          echo "==========================================="
+          echo "  TEXT REPLACEMENT"
+          echo "==========================================="
+          echo "Version: $VERSION"
+          echo "Files: $REPLACEMENT_FILES"
+          echo "Specs: $REPLACEMENT_SPECS"
+          echo "==========================================="
+
+          # Parse JSON arrays using jq
+          FILES=$(echo "$REPLACEMENT_FILES" | jq -r '.[]')
+
+          if [ -z "$FILES" ]; then
+            echo "No files specified for replacement"
+            exit 0
+          fi
+
+          # Process each file
+          for FILE in $FILES; do
+            echo "Processing file: $FILE"
+
+            if [ ! -f "$FILE" ]; then
+              echo "WARNING: File not found: $FILE"
+              continue
+            fi
+
+            # Apply each replacement spec to the file
+            echo "$REPLACEMENT_SPECS" | jq -c '.[]' | while read -r spec; do
+              PATTERN=$(echo "$spec" | jq -r '.pattern')
+              REPLACEMENT=$(echo "$spec" | jq -r '.replacement')
+
+              # Replace {{version}} placeholder with actual version
+              REPLACEMENT="${REPLACEMENT//\{\{version\}\}/$VERSION}"
+
+              echo "  Applying: $PATTERN -> $REPLACEMENT"
+
+              # Perform the replacement using sed
+              sed -i "s|$PATTERN|$REPLACEMENT|g" "$FILE"
+            done
+
+            echo "  Modified: $FILE"
+            cat "$FILE"
+          done
+
+          echo "==========================================="
+          echo "Text replacement complete"
+          echo "==========================================="
+
+      - name: Stage modified files for artifact
+        run: |
+          mkdir -p text-replace-artifact
+
+          # Copy each modified file to artifact staging directory preserving paths
+          echo "$REPLACEMENT_FILES" | jq -r '.[]' | while read -r file; do
+            if [ -f "$file" ]; then
+              # Create directory structure in artifact staging
+              target_dir="text-replace-artifact/$(dirname "$file")"
+              mkdir -p "$target_dir"
+
+              # Copy file preserving path
+              cp -p "$file" "text-replace-artifact/$file"
+              echo "Staged $file -> text-replace-artifact/$file"
+            fi
+          done
+
+          echo "Artifact staging complete:"
+          find text-replace-artifact -type f
+        env:
+          REPLACEMENT_FILES: ${{ inputs.replacement-files }}
+
+      - name: Upload modified files
+        uses: actions/upload-artifact@v4
+        with:
+          name: text-replace-files
+          path: text-replace-artifact/
+          retention-days: 5
+
+  # Stage 3: Create release using semantic-release
+  release:
+    name: Create Release
+    needs: [version, text-replace]
+    # Run if would-release is true, regardless of text-replace job status
+    if: |
+      always() &&
+      needs.version.outputs.would-release == 'true' &&
+      (needs.text-replace.result == 'success' || needs.text-replace.result == 'skipped')
+    uses: ./.github/workflows/stage-release-semantic.yml
+    permissions:
+      contents: write
+    with:
+      node-version: ${{ inputs.node-version }}
+      git-user-name: ${{ inputs.git-user-name }}
+      git-user-email: ${{ inputs.git-user-email }}
+      download-artifacts: ${{ inputs.enable-text-replacement }}
+      artifact-pattern: 'text-replace-*'
+      git-commit-files: ${{ inputs.enable-text-replacement && inputs.replacement-files || '' }}
+
+  # Summary job
+  summary:
+    name: Workflow Summary
+    needs: [version, text-replace, release]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Display workflow summary
+        run: |
+          echo "==========================================="
+          echo "  NO-BUILD RELEASE WORKFLOW SUMMARY"
+          echo "==========================================="
+          echo "Would release: ${{ needs.version.outputs.would-release }}"
+
+          if [ "${{ needs.version.outputs.would-release }}" = "true" ]; then
+            echo "Version: ${{ needs.version.outputs.version }}"
+            echo "Release type: ${{ needs.version.outputs.release-type }}"
+            echo "Git tag: ${{ needs.version.outputs.git-tag }}"
+            echo "Text replacement: ${{ inputs.enable-text-replacement }}"
+            echo "Text replacement status: ${{ needs.text-replace.result }}"
+            echo "Release status: ${{ needs.release.result }}"
+
+            if [ "${{ needs.release.result }}" = "success" ]; then
+              echo "Release URL: ${{ needs.release.outputs.release-url }}"
+            fi
+          else
+            echo "ℹ️  No release created (no releasable commits)"
+            echo ""
+            echo "To trigger a release, use conventional commits:"
+            echo "  feat: new feature → minor version bump"
+            echo "  fix: bug fix → patch version bump"
+            echo "  feat!: breaking change → major version bump"
+          fi
+          echo "==========================================="

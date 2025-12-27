@@ -83,7 +83,7 @@ jobs:
 
       - name: Create semantic-release config
         run: |
-          cat > .releaserc.json << EOF
+          cat > .releaserc.json << "EOF"
           {
             "branches": [
               "main",
@@ -144,12 +144,15 @@ jobs:
               [
                 "@semantic-release/changelog",
                 {
-                  "changelogFile": "${{ steps.changelog-file.outputs.changelog_file }}"
+                  "changelogFile": "CHANGELOG_FILE_PLACEHOLDER"
                 }
               ]
             ]
           }
           EOF
+
+          # Replace placeholder with actual changelog file
+          sed -i "s|CHANGELOG_FILE_PLACEHOLDER|${{ steps.changelog-file.outputs.changelog_file }}|g" .releaserc.json
 
       - name: Run semantic-release (dry-run)
         id: semantic

@@ -28,6 +28,11 @@ on:
         required: false
         type: string
         default: 'build-*'
+      git-commit-files:
+        description: 'Additional files to commit with changelog (glob pattern or array)'
+        required: false
+        type: string
+        default: ''
     outputs:
       version:
         description: 'Released version'
@@ -76,6 +81,19 @@ jobs:
           path: ./artifacts
           merge-multiple: true
 
+      - name: Restore artifact files to repository
+        if: inputs.git-commit-files != ''
+        run: |
+          echo "Restoring artifact files to repository root..."
+          if [ -d "./artifacts" ]; then
+            # Copy all files from artifacts directory to repository root, preserving structure
+            cp -rv ./artifacts/* . 2>/dev/null || true
+            echo "Artifact files restored"
+            ls -la
+          else
+            echo "No artifacts directory found"
+          fi
+
       - name: Determine changelog filename
         id: changelog-file
         run: |
@@ -90,7 +108,14 @@ jobs:
 
       - name: Create semantic-release config
         run: |
-          cat > .releaserc.json << EOF
+          # Build git assets array
+          GIT_ASSETS='["${{ steps.changelog-file.outputs.changelog_file }}"'
+          if [ -n "${{ inputs.git-commit-files }}" ]; then
+            GIT_ASSETS="$GIT_ASSETS, \"${{ inputs.git-commit-files }}\""
+          fi
+          GIT_ASSETS="$GIT_ASSETS]"
+
+          cat > .releaserc.json << "EOF"
           {
             "branches": [
               "main",
@@ -158,13 +183,19 @@ jobs:
               [
                 "@semantic-release/git",
                 {
-                  "assets": ["${{ steps.changelog-file.outputs.changelog_file }}"],
+                  "assets": $GIT_ASSETS,
                   "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
                 }
               ]
             ]
           }
           EOF
+
+          # Replace placeholders with actual values
+          sed -i "s|\$GIT_ASSETS|$GIT_ASSETS|g" .releaserc.json
+
+          echo "Generated .releaserc.json:"
+          cat .releaserc.json
 
       - name: Run semantic-release
         id: semantic

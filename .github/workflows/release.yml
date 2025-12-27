@@ -1,0 +1,22 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+      - rc
+      - uat
+      - dev
+      - alpha
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    uses: ./.github/workflows/no-build-release.yml
+    with:
+      node-version: '20.x'
+      git-user-name: 'Release Bot'
+      git-user-email: 'release-bot@github.com'
