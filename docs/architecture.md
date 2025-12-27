@@ -12,21 +12,23 @@ This document explains the design decisions and architecture of the atb-ci reusa
 
 ## Two-Tier Architecture
 
-### Tier 1: Shared Stages (`.github/workflows/stages/`)
+### Tier 1: Shared Stages (`.github/workflows/stage-*.yml`)
 
-Atomic, reusable components shared between build types.
+Atomic, reusable components shared between build types (prefixed with `stage-`).
+
+**Note**: Due to GitHub Actions limitations, reusable workflows must be in the root `.github/workflows/` directory, not in subdirectories. We use the `stage-` prefix to indicate these are internal building blocks.
 
 #### Shared Across All Build Types
-- **`version-detect.yml`** - Semantic-release dry-run (forecast version)
-- **`release-semantic.yml`** - Semantic-release actual (create tag/release)
+- **`stage-version-detect.yml`** - Semantic-release dry-run (forecast version)
+- **`stage-release-semantic.yml`** - Semantic-release actual (create tag/release)
 
 #### Build-Type Specific
-- **`go-build-matrix.yml`** - Multi-platform Go builds
-- **`docker-build.yml`** - Multi-platform Docker builds (coming soon)
-- **`npm-test.yml`** - npm test + coverage (coming soon)
-- **`npm-publish.yml`** - npm publish (coming soon)
-- **`dotnet-build.yml`** - .NET builds (coming soon)
-- **`dotnet-test.yml`** - .NET tests (coming soon)
+- **`stage-go-build-matrix.yml`** - Multi-platform Go builds
+- **`stage-docker-build.yml`** - Multi-platform Docker builds (coming soon)
+- **`stage-npm-test.yml`** - npm test + coverage (coming soon)
+- **`stage-npm-publish.yml`** - npm publish (coming soon)
+- **`stage-dotnet-build.yml`** - .NET builds (coming soon)
+- **`stage-dotnet-test.yml`** - .NET tests (coming soon)
 
 ### Tier 2: Build-Type Workflows (`.github/workflows/`)
 
@@ -76,9 +78,9 @@ jobs:
 ```
 Consumer Repo (e.g., A-Template-B)
   └─ calls: atb-ci/.github/workflows/go-release.yml@v1
-       ├─ internally calls: stages/version-detect.yml
-       ├─ internally calls: stages/go-build-matrix.yml
-       └─ internally calls: stages/release-semantic.yml
+       ├─ internally calls: stage-version-detect.yml
+       ├─ internally calls: stage-go-build-matrix.yml
+       └─ internally calls: stage-release-semantic.yml
 ```
 
 ## Workflow Pattern
@@ -88,17 +90,17 @@ All build-type workflows follow this pattern:
 ```yaml
 jobs:
   version:
-    uses: ./.github/workflows/stages/version-detect.yml       # SHARED
+    uses: ./.github/workflows/stage-version-detect.yml       # SHARED
 
   build:
     needs: version
     if: needs.version.outputs.would-release == 'true'
-    uses: ./.github/workflows/stages/<buildtype>-build.yml    # BUILD-SPECIFIC
+    uses: ./.github/workflows/stage-<buildtype>-build.yml    # BUILD-SPECIFIC
 
   release:
     needs: [version, build]
     if: needs.version.outputs.would-release == 'true'
-    uses: ./.github/workflows/stages/release-semantic.yml     # SHARED
+    uses: ./.github/workflows/stage-release-semantic.yml     # SHARED
 ```
 
 This ensures:

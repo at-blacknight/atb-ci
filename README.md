@@ -96,16 +96,16 @@ Coming soon.
 
 This repository follows a two-tier architecture:
 
-### Tier 1: Shared Stages (`.github/workflows/stages/`)
+### Tier 1: Shared Stages (`.github/workflows/stage-*.yml`)
 
-Reusable components shared between build types:
+Reusable components shared between build types (prefixed with `stage-`):
 
-- **`version-detect.yml`** - Semantic-release dry-run (forecast version)
-- **`release-semantic.yml`** - Semantic-release actual (create tag/release)
-- **`go-build-matrix.yml`** - Multi-platform Go builds
+- **`stage-version-detect.yml`** - Semantic-release dry-run (forecast version)
+- **`stage-release-semantic.yml`** - Semantic-release actual (create tag/release)
+- **`stage-go-build-matrix.yml`** - Multi-platform Go builds
 - More stages for Docker, npm, .NET...
 
-### Tier 2: Build-Type Workflows (`.github/workflows/`)
+### Tier 2: Build-Type Workflows (`.github/workflows/*.yml`)
 
 Orchestrate shared stages for specific build types:
 
@@ -114,6 +114,8 @@ Orchestrate shared stages for specific build types:
 - More workflows for npm, .NET...
 
 **Consumer repos call build-type workflows** (e.g., `go-release.yml`), not individual stages. Stages are internal implementation details.
+
+**Note**: Stages are in the root `.github/workflows/` directory (not a subdirectory) due to GitHub Actions limitations. The `stage-` prefix indicates they are internal building blocks.
 
 ## Examples
 
