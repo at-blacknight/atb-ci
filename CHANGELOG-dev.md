@@ -1,3 +1,10 @@
+## [0.1.1-dev.2](https://github.com/at-blacknight/atb-ci/compare/v0.1.1-dev.1...v0.1.1-dev.2) (2025-12-27)
+
+
+### Bug Fixes
+
+* attempt to get clean app name in zip ([c002afe](https://github.com/at-blacknight/atb-ci/commit/c002afe8515f25729731168c7913324a07c0ca86))
+
 ## [0.1.1-dev.1](https://github.com/at-blacknight/atb-ci/compare/v0.1.0...v0.1.1-dev.1) (2025-12-27)
 
 
