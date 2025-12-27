@@ -80,6 +80,66 @@ Full Go release pipeline with semantic versioning.
 4. Attaches build artifacts (ZIP files + checksums)
 5. Commits CHANGELOG.md
 
+### No-Build Release (`no-build-release.yml`)
+
+Semantic versioning and release automation for projects without compilation (e.g., reusable workflow repositories, documentation projects, configuration repositories).
+
+**Inputs:**
+- `node-version` - Node.js version (default: '20.x')
+- `git-user-name` - Git committer name (default: 'Release Bot')
+- `git-user-email` - Git committer email (default: 'release-bot@github.com')
+- `enable-text-replacement` - Enable version text replacement in files (default: false)
+- `replacement-files` - JSON array of files to modify (optional, e.g., `["package.json", "src/version.ts"]`)
+- `replacement-specs` - JSON array of replacement specs (optional, e.g., `[{"pattern": "...", "replacement": "..."}]`)
+
+**What it does:**
+1. Detects version using semantic-release (dry-run on PRs)
+2. Optionally performs text replacements in specified files (if enabled)
+3. Creates GitHub release with changelog
+4. Commits CHANGELOG.md (and modified files if text replacement enabled)
+
+**Basic usage (no text replacement):**
+```yaml
+name: Release
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    uses: at-blacknight/atb-ci/.github/workflows/no-build-release.yml@v1
+    with:
+      git-user-name: 'Release Bot'
+      git-user-email: 'release-bot@github.com'
+```
+
+**Advanced usage (with text replacement):**
+```yaml
+name: Release
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    uses: at-blacknight/atb-ci/.github/workflows/no-build-release.yml@v1
+    with:
+      enable-text-replacement: true
+      replacement-files: '["package.json", "src/version.ts"]'
+      replacement-specs: '[
+        {"pattern": "\"version\": \".*\"", "replacement": "\"version\": \"{{version}}\""},
+        {"pattern": "export const VERSION = \".*\"", "replacement": "export const VERSION = \"{{version}}\""}
+      ]'
+```
+
 ### Docker Release (`docker-release.yml`)
 
 Coming soon.
@@ -110,6 +170,7 @@ Reusable components shared between build types (prefixed with `stage-`):
 Orchestrate shared stages for specific build types:
 
 - **`go-release.yml`** - Go: version-detect → go-build → release-semantic
+- **`no-build-release.yml`** - No-build: version-detect → [optional text-replace] → release-semantic
 - **`docker-release.yml`** - Docker: version-detect → docker-build → release-semantic
 - More workflows for npm, .NET...
 
