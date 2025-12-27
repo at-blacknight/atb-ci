@@ -182,8 +182,8 @@ jobs:
       - name: Generate resource.syso (Windows only)
         if: inputs.enable-windows-resource && matrix.goos == 'windows'
         run: |
-          goversioninfo -o resource.syso
-          ls -lh resource.syso
+          goversioninfo -platform-specific=true -arm=true
+          ls -lh resource*.syso
 
       - name: Build binary
         env:
