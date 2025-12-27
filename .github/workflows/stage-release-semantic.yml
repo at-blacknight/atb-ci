@@ -191,6 +191,9 @@ jobs:
           }
           EOF
 
+          # Replace placeholders with actual values
+          sed -i "s|\$GIT_ASSETS|$GIT_ASSETS|g" .releaserc.json
+
           echo "Generated .releaserc.json:"
           cat .releaserc.json
 
