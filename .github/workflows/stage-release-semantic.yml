@@ -82,8 +82,10 @@ jobs:
           {
             "branches": [
               "main",
-              { "name": "uat", "prerelease": "rc" },
-              { "name": "develop", "prerelease": "beta" }
+              { "name": "rc", "prerelease": true },
+              { "name": "uat", "prerelease": true },
+              { "name": "dev", "prerelease": true },
+              { "name": "alpha", "prerelease": true }
             ],
             "plugins": [
               [
