@@ -115,7 +115,7 @@ jobs:
           fi
           GIT_ASSETS="$GIT_ASSETS]"
 
-          cat > .releaserc.json << EOF
+          cat > .releaserc.json << "EOF"
           {
             "branches": [
               "main",
