@@ -208,11 +208,19 @@ jobs:
             EXT=".exe"
           fi
 
-          BINARY="${{ inputs.binary-name }}-${{ matrix.goos }}-${{ matrix.goarch }}${EXT}"
+          # Binary was built with platform-specific name (safe, no collisions)
+          BUILT_BINARY="${{ inputs.binary-name }}-${{ matrix.goos }}-${{ matrix.goarch }}${EXT}"
+
+          # Clean name for inside the zip
+          CLEAN_BINARY="${{ inputs.binary-name }}${EXT}"
+
           ARCHIVE="${{ inputs.binary-name }}-${{ inputs.version }}-${{ matrix.goos }}-${{ matrix.goarch }}.zip"
 
-          # Create ZIP archive
-          zip "$ARCHIVE" "$BINARY"
+          # Rename binary to clean name for zip
+          mv "$BUILT_BINARY" "$CLEAN_BINARY"
+
+          # Create ZIP archive with clean-named binary
+          zip "$ARCHIVE" "$CLEAN_BINARY"
 
           # Generate checksum
           sha256sum "$ARCHIVE" > "$ARCHIVE.sha256"
