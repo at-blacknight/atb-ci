@@ -76,9 +76,21 @@ jobs:
           path: ./artifacts
           merge-multiple: true
 
+      - name: Determine changelog filename
+        id: changelog-file
+        run: |
+          BRANCH="${GITHUB_REF#refs/heads/}"
+          if [ "$BRANCH" = "main" ]; then
+            CHANGELOG_FILE="CHANGELOG.md"
+          else
+            CHANGELOG_FILE="CHANGELOG-${BRANCH}.md"
+          fi
+          echo "changelog_file=$CHANGELOG_FILE" >> $GITHUB_OUTPUT
+          echo "Using changelog file: $CHANGELOG_FILE"
+
       - name: Create semantic-release config
         run: |
-          cat > .releaserc.json << 'EOF'
+          cat > .releaserc.json << EOF
           {
             "branches": [
               "main",
@@ -132,7 +144,7 @@ jobs:
               [
                 "@semantic-release/changelog",
                 {
-                  "changelogFile": "CHANGELOG.md"
+                  "changelogFile": "${{ steps.changelog-file.outputs.changelog_file }}"
                 }
               ],
               [
@@ -146,7 +158,7 @@ jobs:
               [
                 "@semantic-release/git",
                 {
-                  "assets": ["CHANGELOG.md"],
+                  "assets": ["${{ steps.changelog-file.outputs.changelog_file }}"],
                   "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
                 }
               ]

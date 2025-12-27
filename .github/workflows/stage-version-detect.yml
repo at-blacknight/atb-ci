@@ -69,9 +69,21 @@ jobs:
             @semantic-release/exec@6 \
             conventional-changelog-conventionalcommits@7
 
+      - name: Determine changelog filename
+        id: changelog-file
+        run: |
+          BRANCH="${GITHUB_REF#refs/heads/}"
+          if [ "$BRANCH" = "main" ]; then
+            CHANGELOG_FILE="CHANGELOG.md"
+          else
+            CHANGELOG_FILE="CHANGELOG-${BRANCH}.md"
+          fi
+          echo "changelog_file=$CHANGELOG_FILE" >> $GITHUB_OUTPUT
+          echo "Using changelog file: $CHANGELOG_FILE"
+
       - name: Create semantic-release config
         run: |
-          cat > .releaserc.json << 'EOF'
+          cat > .releaserc.json << EOF
           {
             "branches": [
               "main",
@@ -125,13 +137,14 @@ jobs:
               [
                 "@semantic-release/exec",
                 {
-                  "verifyReleaseCmd": "echo \"version=${nextRelease.version}\" >> $GITHUB_OUTPUT && echo \"would-release=true\" >> $GITHUB_OUTPUT && echo \"release-type=${nextRelease.type}\" >> $GITHUB_OUTPUT && echo \"release-channel=${nextRelease.channel || 'main'}\" >> $GITHUB_OUTPUT && echo \"git-tag=v${nextRelease.version}\" >> $GITHUB_OUTPUT"
+                  "verifyConditionsCmd": "echo \"would-release=false\" >> $GITHUB_OUTPUT",
+                  "generateNotesCmd": "echo \"version=${nextRelease.version}\" >> $GITHUB_OUTPUT && echo \"would-release=true\" >> $GITHUB_OUTPUT && echo \"release-type=${nextRelease.type}\" >> $GITHUB_OUTPUT && echo \"release-channel=${nextRelease.channel || 'main'}\" >> $GITHUB_OUTPUT && echo \"git-tag=v${nextRelease.version}\" >> $GITHUB_OUTPUT && echo \"${nextRelease.notes}\" > CHANGELOG-NEW.md"
                 }
               ],
               [
                 "@semantic-release/changelog",
                 {
-                  "changelogFile": "CHANGELOG.md"
+                  "changelogFile": "${{ steps.changelog-file.outputs.changelog_file }}"
                 }
               ]
             ]
@@ -178,7 +191,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: changelog
-          path: CHANGELOG.md
+          path: CHANGELOG-NEW.md
           retention-days: 5
 
       - name: Display version info
